@@ -1288,7 +1288,7 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 	
 	else if (eax==0x4FFFFFFE) {
 		
-		time_cycles = atomic64_read(&time_spent_exiting);
+		time_cycles = atomic64_read(&time_spent);
 		printk(KERN_INFO "Total time spent exiting: %llu", time_cycles);
 		
 		// update ebx with high 32 bits of time cycles
