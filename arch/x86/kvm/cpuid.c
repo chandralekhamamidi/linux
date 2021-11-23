@@ -30,6 +30,7 @@
  * aligned to sizeof(unsigned long) because it's not accessed via bitops.
  */
 u32 kvm_cpu_caps[NR_KVM_CPU_CAPS] __read_mostly;
+u32 total_exits;
 EXPORT_SYMBOL_GPL(kvm_cpu_caps);
 
 static u32 xstate_required_size(u64 xstate_bv, bool compacted)
@@ -125,7 +126,7 @@ static void kvm_update_kvm_cpuid_base(struct kvm_vcpu *vcpu)
 	}
 }
 
-static struct kvm_cpuid_entry2 *kvm_find_kvm_cpuid_features(struct kvm_vcpu *vcpu)
+struct kvm_cpuid_entry2 *kvm_find_kvm_cpuid_features(struct kvm_vcpu *vcpu)
 {
 	u32 base = vcpu->arch.kvm_cpuid_base;
 
@@ -1265,16 +1266,41 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 }
 EXPORT_SYMBOL_GPL(kvm_cpuid);
 
+// Ass-2 changes
+atomic_t exit_count = ATOMIC_INIT(0);
+atomic64_t cycle_time = ATOMIC_INIT(0);
+EXPORT_SYMBOL(exit_count);
+EXPORT_SYMBOL(cycle_time);
+
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
 	u32 eax, ebx, ecx, edx;
+	// Ass-2 changes
+	uint64_t cycles;
 
 	if (cpuid_fault_enabled(vcpu) && !kvm_require_cpl(vcpu, 0))
 		return 1;
 
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
-	kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, false);
+	
+	// Ass-2 changes
+	if(eax==0x4FFFFFFF){
+		eax = atomic_read(&exit_count);
+		cycles = atomic64_read(&cycle_time);
+		printk(KERN_INFO "exits: %u, Cycles: %llu", eax, cycles);
+		
+		// write high 32 bits of cycles into ebx
+		ebx = (u32)(cycles >> 32);
+		
+		// write low 32 bits of cycles into ecx
+		ecx = (u32)cycles;
+		printk(KERN_INFO "high-bits: %u, low-bits: %u", ebx, ecx);
+	}
+	else
+	{
+		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, false);
+	}
 	kvm_rax_write(vcpu, eax);
 	kvm_rbx_write(vcpu, ebx);
 	kvm_rcx_write(vcpu, ecx);
