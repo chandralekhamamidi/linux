@@ -27,3 +27,7 @@ Created the VM on top of the ubuntu system. Built a test file to test the kernel
 12. Created a test file and executed it to see the results
 
 
+## Screenshots
+
+![image](https://user-images.githubusercontent.com/67281829/142979898-0aaad88d-3b84-4add-8e83-6357846fd31d.png)
+![image](https://user-images.githubusercontent.com/67281829/142980036-a705e232-0b95-4332-98b2-c7aa08a389db.png)
