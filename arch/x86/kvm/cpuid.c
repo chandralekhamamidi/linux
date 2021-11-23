@@ -30,7 +30,6 @@
  * aligned to sizeof(unsigned long) because it's not accessed via bitops.
  */
 u32 kvm_cpu_caps[NR_KVM_CPU_CAPS] __read_mostly;
-u32 total_exits;
 EXPORT_SYMBOL_GPL(kvm_cpu_caps);
 
 static u32 xstate_required_size(u64 xstate_bv, bool compacted)
@@ -1265,18 +1264,15 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 	return exact;
 }
 EXPORT_SYMBOL_GPL(kvm_cpuid);
-
-// Ass-2 changes
-atomic_t exit_count = ATOMIC_INIT(0);
-atomic64_t cycle_time = ATOMIC_INIT(0);
-EXPORT_SYMBOL(exit_count);
-EXPORT_SYMBOL(cycle_time);
+atomic_t exit_cnt = ATOMIC_INIT(0);
+atomic64_t time_spent = ATOMIC_INIT(0);
+EXPORT_SYMBOL(exit_cnt);
+EXPORT_SYMBOL(time_spent);
 
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
 	u32 eax, ebx, ecx, edx;
-	// Ass-2 changes
-	uint64_t cycles;
+	uint64_t time_cycles;
 
 	if (cpuid_fault_enabled(vcpu) && !kvm_require_cpl(vcpu, 0))
 		return 1;
@@ -1284,18 +1280,23 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
 	
-	// Ass-2 changes
 	if(eax==0x4FFFFFFF){
-		eax = atomic_read(&exit_count);
-		cycles = atomic64_read(&cycle_time);
-		printk(KERN_INFO "exits: %u, Cycles: %llu", eax, cycles);
+		eax = atomic_read(&exit_cnt);
+		printk(KERN_INFO "Number of exits: %u", eax);
+
+	}
+	
+	else if (eax==0x4FFFFFFE) {
 		
-		// write high 32 bits of cycles into ebx
-		ebx = (u32)(cycles >> 32);
+		time_cycles = atomic64_read(&time_spent_exiting);
+		printk(KERN_INFO "Total time spent exiting: %llu", time_cycles);
 		
-		// write low 32 bits of cycles into ecx
-		ecx = (u32)cycles;
-		printk(KERN_INFO "high-bits: %u, low-bits: %u", ebx, ecx);
+		// update ebx with high 32 bits of time cycles
+		ebx = (u32)(time_cycles >> 32);
+		
+		// update ecx with low 32 bits of time cycles
+		ecx = (u32)time_cycles;
+		printk(KERN_INFO "Higher Bits: %u, Lower Bits: %u", ebx, ecx);
 	}
 	else
 	{

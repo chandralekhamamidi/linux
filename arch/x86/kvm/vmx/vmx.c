@@ -78,8 +78,8 @@ MODULE_AUTHOR("Qumranet");
 MODULE_LICENSE("GPL");
 
 // Ass-2 changes
-extern atomic_t exit_count;
-extern atomic64_t cycle_time;
+extern atomic_t exit_cnt;
+extern atomic64_t time_spent;
 
 #ifdef MODULE
 static const struct x86_cpu_id vmx_cpu_id[] = {
@@ -5876,20 +5876,21 @@ void dump_vmcs(struct kvm_vcpu *vcpu)
  * The guest has exited.  See if we can fix it or if we need userspace
  * assistance.
  */
- 
+
+
 static int __vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 {
-	uint64_t before = rdtsc();
+	uint64_t start = rdtsc();
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	union vmx_exit_reason exit_reason = vmx->exit_reason;
 	u32 vectoring_info = vmx->idt_vectoring_info;
 	u16 exit_handler_index;
-	uint64_t after;
-	
-	atomic_inc(&exit_count);
-	
+	uint64_t end;
+
+	atomic_inc(&exit_cnt);
+
 	//total_exits++;
-	
+
 	/*
 	 * Flush logged GPAs PML buffer, this will make dirty_bitmap more
 	 * updated. Another good is, in kvm_vm_ioctl_get_dirty_log, before
@@ -6029,11 +6030,10 @@ static int __vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 						kvm_vmx_max_exit_handlers);
 	if (!kvm_vmx_exit_handlers[exit_handler_index])
 		goto unexpected_vmexit;
-		
-	// Ass-2 changes
-	after = rdtsc();
-	
-	atomic64_fetch_add(after-before, &cycle_time);
+
+	end = rdtsc();
+
+	atomic64_fetch_add(end-start, &time_spent);
 
 	return kvm_vmx_exit_handlers[exit_handler_index](vcpu);
 
@@ -6047,8 +6047,8 @@ unexpected_vmexit:
 	vcpu->run->internal.ndata = 2;
 	vcpu->run->internal.data[0] = exit_reason.full;
 	vcpu->run->internal.data[1] = vcpu->arch.last_vmentry_cpu;
-	
-	
+
+
 	return 0;
 }
 
